@@ -2184,7 +2184,7 @@ const internal::VariadicDynCastAllOfMatcher<
 /// \code
 ///   int a, c; float b; int s = sizeof(a) + sizeof(b) + alignof(c);
 /// \endcode
-/// unaryExprOrTypeTraitExpr(hasArgumentOfType(asString("int"))
+/// unaryExprOrTypeTraitExpr(hasArgumentOfType(asString("int")))
 ///   matches \c sizeof(a) and \c alignof(c)
 AST_MATCHER_P(UnaryExprOrTypeTraitExpr, hasArgumentOfType,
               internal::Matcher<QualType>, InnerMatcher) {
