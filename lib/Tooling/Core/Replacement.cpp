@@ -99,6 +99,33 @@ bool operator==(const Replacement &LHS, const Replacement &RHS) {
          LHS.getReplacementText() == RHS.getReplacementText();
 }
 
+// Make the Path absolute using the current working directory of the given
+// SourceManager if the Path is not an absolute path.
+//
+// The Path can be a path relative to the build directory, or retrieved from
+// the SourceManager.
+std::string MakeAbsolutePath(const SourceManager &SM, StringRef Path) {
+  llvm::SmallString<128> AbsolutePath(Path);
+  if (std::error_code EC =
+          SM.getFileManager().getVirtualFileSystem()->makeAbsolute(
+              AbsolutePath))
+    llvm::errs() << "Warning: could not make absolute file: '" << EC.message()
+                 << '\n';
+  // Handle symbolic link path cases.
+  // We are trying to get the real file path of the symlink.
+  const DirectoryEntry *Dir = SM.getFileManager().getDirectory(
+      llvm::sys::path::parent_path(AbsolutePath.str()));
+  if (Dir) {
+    StringRef DirName = SM.getFileManager().getCanonicalName(Dir);
+    SmallVector<char, 128> AbsoluteFilename;
+    llvm::sys::path::append(AbsoluteFilename, DirName,
+                            llvm::sys::path::filename(AbsolutePath.str()));
+    return llvm::StringRef(AbsoluteFilename.data(), AbsoluteFilename.size())
+        .str();
+  }
+  return AbsolutePath.str();
+}
+
 void Replacement::setFromSourceLocation(const SourceManager &Sources,
                                         SourceLocation Start, unsigned Length,
                                         StringRef ReplacementText) {
@@ -106,6 +133,7 @@ void Replacement::setFromSourceLocation(const SourceManager &Sources,
       Sources.getDecomposedLoc(Start);
   const FileEntry *Entry = Sources.getFileEntryForID(DecomposedLocation.first);
   this->FilePath = Entry ? Entry->getName() : InvalidLocation;
+  this->FilePath = MakeAbsolutePath(Sources, this->FilePath);
   this->ReplacementRange = Range(DecomposedLocation.second, Length);
   this->ReplacementText = ReplacementText;
 }
