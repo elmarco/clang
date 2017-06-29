@@ -1699,6 +1699,18 @@ void BuildLockset::handleCall(Expr *Exp, const NamedDecl *D, VarDecl *VD) {
     }
   }
 
+  if (D->getKind() == clang::Decl::Var) {
+    auto *VD = clang::dyn_cast<clang::VarDecl>(D);
+    auto *T = VD->getType().getTypePtr();
+    auto *TT = T->getAs<TypedefType>();
+    D = TT->getDecl();
+  } else if (D->getKind() == clang::Decl::ParmVar) {
+    auto *PV = clang::dyn_cast<clang::ParmVarDecl>(D);
+    auto *T = PV->getType().getTypePtr();
+    auto *TT = T->getAs<TypedefType>();
+    D = TT->getDecl();
+  }
+
   for(Attr *Atconst : D->attrs()) {
     Attr* At = const_cast<Attr*>(Atconst);
     switch (At->getKind()) {
@@ -1962,8 +1974,9 @@ void BuildLockset::VisitCallExpr(CallExpr *Exp) {
   }
 
   NamedDecl *D = dyn_cast_or_null<NamedDecl>(Exp->getCalleeDecl());
-  if(!D || !D->hasAttrs())
+  if(!D)
     return;
+
   handleCall(Exp, D);
 }
 

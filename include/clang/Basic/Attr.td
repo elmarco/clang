@@ -2197,7 +2197,8 @@ def RequiresCapability : InheritableAttr {
   let TemplateDependent = 1;
   let ParseArgumentsAsUnevaluated = 1;
   let DuplicatesAllowedWhileMerging = 1;
-  let Subjects = SubjectList<[Function]>;
+  let Subjects = SubjectList<[Function, HasFunctionProto], WarnDiag,
+                             "ExpectedFunctionWithProtoType">;
   let Accessors = [Accessor<"isShared", [GNU<"requires_shared_capability">,
                                          GNU<"shared_locks_required">,
                                 CXX11<"clang","requires_shared_capability">]>];
