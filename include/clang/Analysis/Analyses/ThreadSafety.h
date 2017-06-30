@@ -193,6 +193,8 @@ public:
   /// Warn that there is a cycle in acquired_before/after dependencies.
   virtual void handleBeforeAfterCycle(Name L1Name, SourceLocation Loc) {}
 
+  virtual void handleUnmatchedAttrs(SourceLocation Loc) {}
+
   /// Called by the analysis when starting analysis of a function.
   /// Used to issue suggestions for changes to annotations.
   virtual void enterFunction(const FunctionDecl *FD) {}

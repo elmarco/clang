@@ -2969,7 +2969,9 @@ def warn_acquired_before : Warning<
 def warn_acquired_before_after_cycle : Warning<
   "Cycle in acquired_before/after dependencies, starting with '%0'">,
   InGroup<ThreadSafetyAnalysis>, DefaultIgnore;
-
+def warn_unmatched_attrs : Warning<
+  "Unmached attributes">,
+  InGroup<ThreadSafetyAnalysis>, DefaultIgnore;
 
 // Thread safety warnings negative capabilities
 def warn_acquire_requires_negative_cap : Warning<

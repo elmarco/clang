@@ -1906,6 +1906,11 @@ class ThreadSafetyReporter : public clang::threadSafety::ThreadSafetyHandler {
     Warnings.emplace_back(std::move(Warning), getNotes());
   }
 
+  void handleUnmatchedAttrs(SourceLocation Loc) override {
+    PartialDiagnosticAt Warning(Loc, S.PDiag(diag::warn_unmatched_attrs));
+    Warnings.emplace_back(std::move(Warning), getNotes());
+  }
+
   void enterFunction(const FunctionDecl* FD) override {
     CurrentFunction = FD;
   }

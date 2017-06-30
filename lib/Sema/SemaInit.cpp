@@ -7061,6 +7061,18 @@ InitializationSequence::Perform(Sema &S,
       Sema::AssignConvertType ConvTy =
         S.CheckSingleAssignmentConstraints(Step->Type, Result, true,
             Entity.getKind() == InitializedEntity::EK_Parameter_CF_Audited);
+
+      auto *E = Result.get();
+      if (UnaryOperator *UO = dyn_cast<UnaryOperator>(E)) {
+         E = UO->getSubExpr();
+      }
+      auto *RHS = E->getReferencedDeclOfCallee();
+      auto *LHS = Entity.getDecl();
+      if (!LHS && Entity.getParent()) {
+        LHS = Entity.getParent()->getDecl();
+      }
+      if (S.checkAttr(LHS, RHS) == Sema::Incompatible)
+          ConvTy = Sema::Incompatible;
       if (Result.isInvalid())
         return ExprError();
       CurInit = Result;

@@ -1703,11 +1703,30 @@ void BuildLockset::handleCall(Expr *Exp, const NamedDecl *D, VarDecl *VD) {
     auto *VD = clang::dyn_cast<clang::VarDecl>(D);
     auto *T = VD->getType().getTypePtr();
     auto *TT = T->getAs<TypedefType>();
+    if (!TT)
+        return;
     D = TT->getDecl();
   } else if (D->getKind() == clang::Decl::ParmVar) {
     auto *PV = clang::dyn_cast<clang::ParmVarDecl>(D);
     auto *T = PV->getType().getTypePtr();
     auto *TT = T->getAs<TypedefType>();
+    if (!TT && T->isPointerType()) {
+        T = T->getPointeeType().getTypePtr();
+        TT = T->getAs<TypedefType>();
+    }
+    if (!TT)
+        return;
+    D = TT->getDecl();
+  } else if (D->getKind() == clang::Decl::Field) {
+    auto *F = clang::dyn_cast<clang::FieldDecl>(D);
+    auto *T = F->getType().getTypePtr();
+    auto *TT = T->getAs<TypedefType>();
+    if (!TT && T->isPointerType()) {
+        T = T->getPointeeType().getTypePtr();
+        TT = T->getAs<TypedefType>();
+    }
+    if (!TT)
+        return;
     D = TT->getDecl();
   }
 
@@ -1876,6 +1895,47 @@ void BuildLockset::VisitCastExpr(CastExpr *CE) {
   checkAccess(CE->getSubExpr(), AK_Read);
 }
 
+static const Decl *getDecl(const Type *T)
+{
+    const TypedefType *TT;
+
+    if (T->isIncompleteArrayType() || T->isArrayType()) {
+        return getDecl(T->getArrayElementTypeNoTypeQual());
+    }
+    if (T->isPointerType()) {
+        T = T->getPointeeType().getTypePtr();
+    }
+
+    TT = T->getAs<TypedefType>();
+    if (!TT)
+        return NULL;
+
+    return TT->getDecl();
+}
+
+static bool hasRC(const Decl *D)
+{
+    if (!D)
+        return false;
+
+    if (D->hasAttr<RequiresCapabilityAttr>())
+        return true;
+
+    if (D->getKind() == clang::Decl::Var) {
+        auto *F = clang::dyn_cast<clang::VarDecl>(D);
+        return hasRC(getDecl(F->getType().getTypePtr()));
+    }
+    if (D->getKind() == clang::Decl::Field) {
+        auto *F = clang::dyn_cast<clang::FieldDecl>(D);
+        return hasRC(getDecl(F->getType().getTypePtr()));
+    }
+    if (D->getKind() == clang::Decl::ParmVar) {
+        auto *PV = clang::dyn_cast<clang::ParmVarDecl>(D);
+        return hasRC(getDecl(PV->getType().getTypePtr()));
+    }
+
+    return false;
+}
 
 void BuildLockset::VisitCallExpr(CallExpr *Exp) {
   bool ExamineArgs = true;
@@ -1968,6 +2028,37 @@ void BuildLockset::VisitCallExpr(CallExpr *Exp) {
           QualType Qt = Pvd->getType();
           if (Qt->isReferenceType())
             checkAccess(Arg, AK_Read, POK_PassByRef);
+
+          if (hasRC(Pvd) != hasRC(getValueDecl(Arg))) {
+               Analyzer->Handler.handleUnmatchedAttrs(Arg->getExprLoc());
+          }
+//          auto *T = Qt.getTypePtr();
+//          if (!T)
+//              continue;
+//          auto *TT = T->getAs<TypedefType>();
+//          if (!TT && T->isPointerType()) {
+//              T = T->getPointeeType().getTypePtr();
+//              TT = T->getAs<TypedefType>();
+//          }
+//          if (!TT)
+//              continue;
+//          auto *D = TT->getDecl();
+
+//          SmallVector<const RequiresCapabilityAttr *, 4> PRequiresCap, ARequiresCap;
+//          for (const auto *A: D->specific_attrs<RequiresCapabilityAttr>()) {
+//            PRequiresCap.push_back(A);
+//          }
+
+//          const ValueDecl *VD = getValueDecl(Arg);
+//          if (!VD)
+//              continue;
+//          for (const auto *A: VD->specific_attrs<RequiresCapabilityAttr>()) {
+//            ARequiresCap.push_back(A);
+//          }
+
+//          if (ARequiresCap.size() != PRequiresCap.size()) {
+//            Analyzer->Handler.handleUnmatchedAttrs(Exp->getExprLoc());
+//          }
         }
       }
     }

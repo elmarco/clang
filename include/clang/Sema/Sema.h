@@ -9311,6 +9311,7 @@ public:
   AssignConvertType CheckAssignmentConstraints(SourceLocation Loc,
                                                QualType LHSType,
                                                QualType RHSType);
+  AssignConvertType checkAttr(Decl *LHS, Decl *RHS);
 
   /// Check assignment constraints and optionally prepare for a conversion of
   /// the RHS to the LHS type. The conversion is prepared for if ConvertRHS

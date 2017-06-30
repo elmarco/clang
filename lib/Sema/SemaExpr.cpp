@@ -7892,6 +7892,58 @@ Sema::CheckTransparentUnionArgumentConstraints(QualType ArgType,
   return Compatible;
 }
 
+static const Decl *getDecl(const Type *T)
+{
+    const TypedefType *TT;
+
+    if (T->isIncompleteArrayType() || T->isArrayType()) {
+        return getDecl(T->getArrayElementTypeNoTypeQual());
+    }
+    if (T->isPointerType()) {
+        T = T->getPointeeType().getTypePtr();
+    }
+
+    TT = T->getAs<TypedefType>();
+    if (!TT)
+        return NULL;
+
+    return TT->getDecl();
+}
+
+static bool hasRC(const Decl *D)
+{
+    if (!D)
+        return false;
+
+    if (D->hasAttr<RequiresCapabilityAttr>())
+        return true;
+
+    if (D->getKind() == clang::Decl::Var) {
+        auto *F = clang::dyn_cast<clang::VarDecl>(D);
+        return hasRC(getDecl(F->getType().getTypePtr()));
+    }
+    if (D->getKind() == clang::Decl::Field) {
+        auto *F = clang::dyn_cast<clang::FieldDecl>(D);
+        return hasRC(getDecl(F->getType().getTypePtr()));
+    }
+    if (D->getKind() == clang::Decl::ParmVar) {
+        auto *PV = clang::dyn_cast<clang::ParmVarDecl>(D);
+        return hasRC(getDecl(PV->getType().getTypePtr()));
+    }
+
+    return false;
+}
+
+Sema::AssignConvertType
+Sema::checkAttr(Decl *LHS, Decl *RHS)
+{
+    if (hasRC(LHS) != hasRC(RHS))
+        return Incompatible;
+
+    return Compatible;
+}
+
+
 Sema::AssignConvertType
 Sema::CheckSingleAssignmentConstraints(QualType LHSType, ExprResult &CallerRHS,
                                        bool Diagnose,
